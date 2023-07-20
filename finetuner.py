@@ -13,24 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-
-# This example fine-tunes Llama v2 model on Guanace dataset
-# using QLoRA. At the end of the script we perform merging the weights
-# Use it by correctly passing --model_name argument when running the
-# script. 
-#
-# Versions used:
-# accelerate == 0.21.0
-# peft == 0.4.0
-# bitsandbytes == 0.40.2
-# transformers == 4.31.0
-# trl == 0.4.7
-
-# For models that have `config.pretraining_tp > 1` install:
-# pip install git+https://github.com/huggingface/transformers.git
-
-
 import os
 from dataclasses import dataclass, field
 from typing import Optional
