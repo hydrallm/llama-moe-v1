@@ -50,12 +50,7 @@ from transformers import (
 from trl import SFTTrainer
 
 
-
-def finetuner_qlora(args):
-    parser = HfArgumentParser(args)
-    script_args = parser.parse_args_into_dataclasses()[0]
-
-
+def finetuner_qlora(script_args):
     def create_and_prepare_model(args):
         compute_dtype = getattr(torch, args.bnb_4bit_compute_dtype)
 

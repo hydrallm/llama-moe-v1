@@ -12,3 +12,8 @@ Working document: https://docs.google.com/document/d/1YKDRCu7M9mflWrxKc1HeFs2HBW
         TheBloke/Llama-2-7B-GPTQ
         Link: https://huggingface.co/TheBloke/Llama-2-7B-GPTQ
 
+
+
+**Setup**
+pip install -r requirements.txt
+
