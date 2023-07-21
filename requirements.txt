@@ -1,7 +1,11 @@
-torch
-datasets
+torch~=2.0.1
+datasets~=2.13.1
 accelerate == 0.21.0
 peft == 0.4.0
 bitsandbytes == 0.40.2
 transformers == 4.31.0
 trl == 0.4.7
+PyYAML~=6.0.1
+numpy~=1.25.1
+pandas~=2.0.3
+tqdm~=4.65.0

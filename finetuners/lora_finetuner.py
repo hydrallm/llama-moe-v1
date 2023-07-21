@@ -10,7 +10,6 @@ import pickle
 import random
 
 from datasets import load_from_disk
-from config import ScriptArguments
 
 from transformers import (
     AutoModel,
