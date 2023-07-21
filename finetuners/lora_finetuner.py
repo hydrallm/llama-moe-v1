@@ -163,6 +163,3 @@ def run_lora_worker(config: ScriptArguments):
         pickle.dump(lora_adapter, handle)
     
 
-if __name__ == "__main__":
-    config = ScriptArguments()
-    run_lora_worker(config)
