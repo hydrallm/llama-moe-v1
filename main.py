@@ -10,7 +10,7 @@ def finetuner_runner(args, datasets):
     print(existing_finetunes)
 
     for dataset_name in datasets:
-        if f"{args.mode}_{script_args.dataset_name.split('/')[-1]}" not in existing_finetunes:
+        if f"{args.mode}_{dataset_name.split('/')[-1]}" not in existing_finetunes:
             script_args = ScriptArguments(
                 dataset_name=dataset_name,
                 max_steps=10000,
