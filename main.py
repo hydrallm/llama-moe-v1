@@ -12,14 +12,14 @@ def load_config(filename):
 
 def finetuner_runner(args, datasets):
     config = load_config(args.config)
-    output_dir = config['output_dir']
+    output_dir = config.output_dir
     existing_finetunes = os.listdir(output_dir)
     print(existing_finetunes)
 
     for dataset_name in datasets:
         if f"{args.mode}_{dataset_name.split('/')[-1]}" not in existing_finetunes:
-            config['dataset_name'] = dataset_name
-            config['max_steps'] = 10000
+            config.dataset_name = dataset_name
+            config.max_steps = 10000
             if args.finetune and args.mode == 'qlora':
                 finetuner_qlora(config)
             elif args.finetune and args.mode == 'lora':
