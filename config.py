@@ -35,12 +35,12 @@ class ScriptArguments:
     )
 
     use_4bit: Optional[bool] = field(
-        default=False,
+        default=True,
         metadata={"help": "Activate 4bit precision base model loading"},
     )
 
     use_8bit: Optional[bool] = field(
-        default= True,
+        default= False,
         metadata={"help": "Activate 8bit precision base model loading"},
     )
 
@@ -77,7 +77,7 @@ class ScriptArguments:
         metadata={"help": "Enables gradient checkpointing."},
     )
     optim: Optional[str] = field(
-        default="adamw_torch_fused",
+        default="paged_adamw_32bit",
         metadata={"help": "The optimizer to use."},
     )
     lr_scheduler_type: str = field(
