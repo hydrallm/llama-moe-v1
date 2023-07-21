@@ -88,6 +88,6 @@ class ScriptArguments:
         metadata={"help": "Merge and push weights after training"},
     )
     output_dir: str = field(
-        default="./results",
+        default="./adapters",
         metadata={"help": "The output directory where the model predictions and checkpoints will be written."},
     )

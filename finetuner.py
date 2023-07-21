@@ -15,6 +15,7 @@
 
 import os
 from dataclasses import dataclass, field
+import pickle
 from typing import Optional
 
 import torch
@@ -30,6 +31,23 @@ from transformers import (
 )
 
 from trl import SFTTrainer
+from accelerate import init_empty_weights
+
+
+def pop_peft(model):
+    with init_empty_weights():
+        lora_state, model_state = {}, {}
+        for k, v in model.state_dict().items():
+            if 'weight_format' in k or 'SCB' in k:
+                pass
+            elif 'lora' in k:
+                lora_state[k] = v
+            else:
+                model_state[k.split('base_model.model.', 1)[1]] = v
+        del model
+
+    return lora_state
+
 
 
 def finetuner_qlora(script_args):
@@ -111,19 +129,24 @@ def finetuner_qlora(script_args):
     )
 
     trainer.train()
+    lora_adapter = pop_peft(model)
 
-    if script_args.merge_and_push:
-        output_dir = os.path.join(script_args.output_dir, "final_checkpoints")
-        trainer.model.save_pretrained(output_dir)
+    output_name = os.path.join(trainer.args.output_dir, f"qlora_{script_args.dataset_name.split('/')[-1]}")
+    with open(output_name, 'wb') as handle:
+        pickle.dump(lora_adapter, handle)
 
-        # Free memory for merging weights
-        del model
-        torch.cuda.empty_cache()
+    # if script_args.merge_and_push:
+    #     output_dir = os.path.join(script_args.output_dir, "final_checkpoints")
+    #     trainer.model.save_pretrained(output_dir)
 
-        from peft import AutoPeftModelForCausalLM
+    #     # Free memory for merging weights
+    #     del model
+    #     torch.cuda.empty_cache()
 
-        model = AutoPeftModelForCausalLM.from_pretrained(output_dir, device_map="auto", torch_dtype=torch.bfloat16)
-        model = model.merge_and_unload()
+    #     from peft import AutoPeftModelForCausalLM
 
-        output_merged_dir = os.path.join(script_args.output_dir, "final_merged_checkpoint")
-        model.save_pretrained(output_merged_dir, safe_serialization=True)
+    #     model = AutoPeftModelForCausalLM.from_pretrained(output_dir, device_map="auto", torch_dtype=torch.bfloat16)
+    #     model = model.merge_and_unload()
+
+    #     output_merged_dir = os.path.join(script_args.output_dir, "final_merged_checkpoint")
+    #     model.save_pretrained(output_merged_dir, safe_serialization=True)
