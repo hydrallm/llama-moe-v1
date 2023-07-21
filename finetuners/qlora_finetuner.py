@@ -49,7 +49,6 @@ def pop_peft(model):
     return lora_state
 
 
-
 def finetuner_qlora(script_args):
     def create_and_prepare_model(args):
         compute_dtype = getattr(torch, args.bnb_4bit_compute_dtype)
@@ -73,28 +72,27 @@ def finetuner_qlora(script_args):
         device_map = {"": 0}
 
         model = AutoModelForCausalLM.from_pretrained(
-            args.model_name, 
-            quantization_config=bnb_config, 
-            device_map=device_map, 
+            args.model_name,
+            quantization_config=bnb_config,
+            device_map=device_map,
             use_auth_token=True
         )
-        
+
         # check: https://github.com/huggingface/transformers/pull/24906
-        model.config.pretraining_tp = 1 
+        model.config.pretraining_tp = 1
 
         peft_config = LoraConfig(
             lora_alpha=script_args.lora_alpha,
             lora_dropout=script_args.lora_dropout,
             r=script_args.lora_r,
             bias="none",
-            task_type="CAUSAL_LM", 
+            task_type="CAUSAL_LM",
         )
 
         tokenizer = AutoTokenizer.from_pretrained(script_args.model_name, trust_remote_code=True)
         tokenizer.pad_token = tokenizer.eos_token
 
         return model, peft_config, tokenizer
-
 
     training_arguments = TrainingArguments(
         output_dir=script_args.output_dir,

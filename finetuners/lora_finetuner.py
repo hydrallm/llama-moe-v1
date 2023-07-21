@@ -10,7 +10,6 @@ import pickle
 import random
 
 from datasets import load_from_disk
-from config import ScriptArguments
 
 from transformers import (
     AutoModel,
@@ -59,7 +58,7 @@ def pop_peft(model):
     return lora_state
 
 
-def run_lora_worker(config: ScriptArguments):
+def run_lora_worker(config):
     """
     train a single LoRA adapter and save it in pickle format
     """
