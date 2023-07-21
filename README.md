@@ -6,10 +6,10 @@ Working document: https://docs.google.com/document/d/1YKDRCu7M9mflWrxKc1HeFs2HBW
 Discord Server: https://discord.gg/CZAJcWTZxX
 
 **Setup**
-
-pip install -r requirements.txt
+  pip install -r requirements.txt
 
 
 **Run Finetuner**
-
-python3 main.py --finetune --mode qlora
+  Modes: qlora, lora
+  python3 main.py --finetune --mode qlora
+  python3 main.py --finetune --mode lora
