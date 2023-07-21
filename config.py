@@ -8,7 +8,6 @@ class ScriptArguments:
     """
 
     local_rank: Optional[int] = field(default=-1, metadata={"help": "Used for multi-gpu"})
-
     per_device_train_batch_size: Optional[int] = field(default=4)
     per_device_eval_batch_size: Optional[int] = field(default=1)
     gradient_accumulation_steps: Optional[int] = field(default=4)
@@ -18,6 +17,7 @@ class ScriptArguments:
     lora_alpha: Optional[int] = field(default=16)
     lora_dropout: Optional[float] = field(default=0.1)
     lora_r: Optional[int] = field(default=64)
+    lora_target_modules = ['q_proj', 'v_proj']
     max_seq_length: Optional[int] = field(default=512)
     model_name: Optional[str] = field(
         default="meta-llama/Llama-2-7b-hf",
@@ -29,10 +29,21 @@ class ScriptArguments:
         default="timdettmers/openassistant-guanaco",
         metadata={"help": "The preference dataset to use."},
     )
+    instruct_format: Optional[bool]= field(
+        default=False,
+        metadata={"help": "set to true if the dataset is in instruct format."},
+    )
+
     use_4bit: Optional[bool] = field(
-        default=True,
+        default=False,
         metadata={"help": "Activate 4bit precision base model loading"},
     )
+
+    use_8bit: Optional[bool] = field(
+        default= True,
+        metadata={"help": "Activate 8bit precision base model loading"},
+    )
+
     use_nested_quant: Optional[bool] = field(
         default=False,
         metadata={"help": "Activate nested quantization for 4bit base models"},
@@ -66,7 +77,7 @@ class ScriptArguments:
         metadata={"help": "Enables gradient checkpointing."},
     )
     optim: Optional[str] = field(
-        default="paged_adamw_32bit",
+        default="adamw_torch_fused",
         metadata={"help": "The optimizer to use."},
     )
     lr_scheduler_type: str = field(
@@ -91,3 +102,5 @@ class ScriptArguments:
         default="./adapters",
         metadata={"help": "The output directory where the model predictions and checkpoints will be written."},
     )
+
+
