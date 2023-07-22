@@ -13,11 +13,15 @@ def load_config(filename):
 def finetuner_runner(args, datasets):
     config = load_config(args.config)
     output_dir = config.output_dir
-    existing_finetunes = os.listdir(output_dir)
-    print(existing_finetunes)
+
+    if os.path.exists(output_dir):
+        existing_finetunes = os.listdir(output_dir)
+        print(existing_finetunes)
+    else:
+        os.mkdir(output_dir)
 
     for dataset_name in datasets:
-        if f"{args.mode}_{dataset_name.split('/')[-1]}" not in existing_finetunes:
+        if f"qlora_{dataset_name.split('/')[-1]}" not in existing_finetunes:
             config.dataset_name = dataset_name
             config.max_steps = 10000
             finetuner(config)
@@ -34,7 +38,7 @@ def main():
     # DATASETS
     datasets = ["timdettmers/openassistant-guanaco"]
 
-    if args.finetune and args.mode:
+    if args.finetune:
         finetuner_runner(args, datasets)
 
 
