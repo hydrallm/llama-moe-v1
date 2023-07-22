@@ -1,17 +1,17 @@
 from finetuners.lora_finetuner import run_lora_worker
 from finetuners.qlora_finetuner import finetuner_qlora
+from configs.config import ScriptArguments
 import argparse
 import os
 import yaml
-
-
-def load_config(filename):
-    with open(filename, 'r') as file:
-        return yaml.safe_load(file)
-
+    
+def load_yaml_as_class(file_path, class_type):
+    with open(file_path, 'r') as file:
+        data = yaml.safe_load(file)
+        return class_type(**data)
 
 def finetuner_runner(args, datasets):
-    config = load_config(args.config)
+    config = load_yaml_as_class(args.config, ScriptArguments)
     output_dir = config.output_dir
     existing_finetunes = os.listdir(output_dir)
     print(existing_finetunes)
@@ -34,7 +34,8 @@ def main():
     args = parser.parse_args()
 
     # DATASETS
-    datasets = ["timdettmers/openassistant-guanaco"]
+    #datasets = ["timdettmers/openassistant-guanaco"]
+    datasets = ['datasets/rick_and_morty_scripts.txt']
 
     if args.finetune and args.mode:
         finetuner_runner(args, datasets)

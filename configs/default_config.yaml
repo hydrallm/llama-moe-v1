@@ -8,7 +8,9 @@ weight_decay: 0.001
 lora_alpha: 16
 lora_dropout: 0.1
 lora_r: 64
-lora_target_modules: ['q_proj', 'v_proj']
+lora_target_modules:
+  - 'q_proj'
+  - 'v_proj'
 max_seq_length: 512
 model_name: "meta-llama/Llama-2-7b-hf"  # The model that you want to train from the Hugging Face hub. E.g. gpt2, gpt2-xl, bert, etc.
 dataset_name: "timdettmers/openassistant-guanaco"  # The preference dataset to use.
