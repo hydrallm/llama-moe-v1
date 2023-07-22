@@ -32,3 +32,4 @@ save_steps: 10  # Save checkpoint every X updates steps.
 logging_steps: 10  # Log every X updates steps.
 merge_and_push: false  # Merge and push weights after training
 output_dir: "./adapters"  # The output directory where the model predictions and checkpoints will be written.
+data_format: "default"
