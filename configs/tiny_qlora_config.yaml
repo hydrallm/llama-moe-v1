@@ -16,11 +16,11 @@ instruct_format: false  # set to true if the dataset is in instruct format.
 use_4bit: true  # Activate 4bit precision base model loading
 use_8bit: false  # Activate 8bit precision base model loading
 use_nested_quant: false  # Activate nested quantization for 4bit base models
-bnb_4bit_compute_dtype: "float16"  # Compute dtype for 4bit base models
+bnb_4bit_compute_dtype: "bfloat16"  # Compute dtype for 4bit base models
 bnb_4bit_quant_type: "nf4"  # Quantization type fp4 or nf4
 num_train_epochs: 0.001  # The number of training epochs for the reward model.
 fp16: false  # Enables fp16 training.
-bf16: false  # Enables bf16 training.
+bf16: true  # Enables bf16 training.
 packing: false  # Use packing dataset creating.
 gradient_checkpointing: true  # Enables gradient checkpointing.
 optim: "paged_adamw_32bit"  # The optimizer to use.
