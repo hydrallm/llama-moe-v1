@@ -19,6 +19,10 @@ huggingface-cli login --token $HUGGINGFACE_TOKEN
 
 ## Finetuner Setup
 
+```
+python3 main.py --finetune --config <path to config>
+```
+
 ### Modes
 The Finetuner can be run in two different modes: `qlora` and `lora`.
 

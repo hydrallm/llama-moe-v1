@@ -92,12 +92,13 @@ def finetuner(script_args):
 
         # Load the entire model on the GPU 0
         # switch to `device_map = "auto"` for multi-GPU
-        device_map = {"": 0}
+        device_map = "auto"
+        print(bnb_config.to_dict())
 
         model = AutoModelForCausalLM.from_pretrained(
             args.model_name,
             quantization_config=bnb_config,
-            torch_dtype=torch.bfloat16,
+            torch_dtype=compute_dtype,
             device_map=device_map,
             use_auth_token=True,
         )
