@@ -1,5 +1,6 @@
 from finetuners.lora_finetuner import run_lora_worker
 from finetuners.qlora_finetuner import finetuner_qlora
+from utils import AttributeDict
 import argparse
 import os
 import yaml
@@ -7,7 +8,7 @@ import yaml
 
 def load_config(filename):
     with open(filename, 'r') as file:
-        return yaml.safe_load(file)
+        return AttributeDict(yaml.safe_load(file))
 
 
 def finetuner_runner(args, datasets):
