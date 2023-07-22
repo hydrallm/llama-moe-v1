@@ -39,6 +39,7 @@ from tqdm import tqdm
 from accelerate import init_empty_weights
 from dataclasses import dataclass, field
 from multiprocessing import Process
+from pathlib import Path
 
 def pop_peft(model):
     """
@@ -126,11 +127,12 @@ def run_lora_worker(config):
     model = LlamaForCausalLM.from_pretrained(
         config.model_name,
         trust_remote_code=True,
-        load_in_8bit=True,
+        load_in_8bit=config.use_8bit,
         device_map='auto'
     )
     model = get_peft_model(model, lora_config)
-    model = prepare_model_for_int8_training(model)
+    if config.use_8bit:
+        model = prepare_model_for_int8_training(model)
 
 
     # train
@@ -147,7 +149,8 @@ def run_lora_worker(config):
             save_strategy="steps",
             output_dir=config.output_dir,
             fp16=config.fp16,
-            bf16=config.bf16
+            bf16=config.bf16,
+            report_to="wandb"
         ),
         data_collator=transformers.DataCollatorForSeq2Seq(
         tokenizer, pad_to_multiple_of=8, return_tensors="pt", padding=True
@@ -156,9 +159,14 @@ def run_lora_worker(config):
     trainer.train()
     lora_adapter = pop_peft(model)
 
-    output_name = f'run_{config.model_name}_{config.dataset_name}'
+    output_name = os.path.join(
+        trainer.args.output_dir,
+        f"lora_{config.model_name.split('/')[-1]}",
+        f"lora_{config.dataset_name.split('/')[-1]}"
+    )
+    Path(output_name).mkdir(parents=True, exist_ok=True)
 
-    with open(output_name, 'wb') as handle:
+    with open(output_name + '/checkpoint.pt', 'w+b') as handle:
         pickle.dump(lora_adapter, handle)
     
 
