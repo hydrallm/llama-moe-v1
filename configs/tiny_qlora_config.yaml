@@ -1,6 +1,6 @@
 local_rank: -1  # Used for multi-gpu
-per_device_train_batch_size: 4
-per_device_eval_batch_size: 1
+per_device_train_batch_size: 120
+per_device_eval_batch_size: 120
 gradient_accumulation_steps: 4
 learning_rate: 0.0002
 max_grad_norm: 0.3
