@@ -32,9 +32,28 @@ from transformers import (
 
 from trl import SFTTrainer
 from accelerate import init_empty_weights
+from pathlib import Path
+
+FORMAT_DICT = {
+    'alpaca': lambda x: ''.join([f'''Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+    ### Instruction:
+    {ex['instruction']}
+
+    ### Input:
+    {ex['input']}
+
+    ### Output: 
+    {ex['output']}
+    ''' for ex in x]),
+
+    'default': lambda x: '\n'.join([ex['text'] for ex in x]),
+}
 
 
 def pop_peft(model):
+    """
+        remove peft from a model, return lora state dict
+    """
     with init_empty_weights():
         lora_state, model_state = {}, {}
         for k, v in model.state_dict().items():
@@ -49,7 +68,10 @@ def pop_peft(model):
     return lora_state
 
 
-def finetuner_qlora(script_args):
+def finetuner(script_args):
+    """
+    Finetune a QLoRA adapter and save it as a .pickle file
+    """
     def create_and_prepare_model(args):
         compute_dtype = getattr(torch, args.bnb_4bit_compute_dtype)
 
@@ -64,7 +86,8 @@ def finetuner_qlora(script_args):
             major, _ = torch.cuda.get_device_capability()
             if major >= 8:
                 print("=" * 80)
-                print("Your GPU supports bfloat16, you can accelerate training with the argument --bf16")
+                print(
+                    "Your GPU supports bfloat16, you can accelerate training with the argument --bf16")
                 print("=" * 80)
 
         # Load the entire model on the GPU 0
@@ -74,8 +97,9 @@ def finetuner_qlora(script_args):
         model = AutoModelForCausalLM.from_pretrained(
             args.model_name,
             quantization_config=bnb_config,
+            torch_dtype=torch.bfloat16,
             device_map=device_map,
-            use_auth_token=True
+            use_auth_token=True,
         )
 
         # check: https://github.com/huggingface/transformers/pull/24906
@@ -89,7 +113,8 @@ def finetuner_qlora(script_args):
             task_type="CAUSAL_LM",
         )
 
-        tokenizer = AutoTokenizer.from_pretrained(script_args.model_name, trust_remote_code=True)
+        tokenizer = AutoTokenizer.from_pretrained(
+            script_args.model_name, trust_remote_code=True)
         tokenizer.pad_token = tokenizer.eos_token
 
         return model, peft_config, tokenizer
@@ -114,6 +139,7 @@ def finetuner_qlora(script_args):
     model, peft_config, tokenizer = create_and_prepare_model(script_args)
     model.config.use_cache = False
     dataset = load_dataset(script_args.dataset_name, split="train")
+    formatting_func = FORMAT_DICT[script_args.data_format]
 
     trainer = SFTTrainer(
         model=model,
@@ -124,27 +150,18 @@ def finetuner_qlora(script_args):
         tokenizer=tokenizer,
         args=training_arguments,
         packing=script_args.packing,
+        formatting_func=formatting_func,
     )
 
     trainer.train()
     lora_adapter = pop_peft(model)
 
-    output_name = os.path.join(trainer.args.output_dir, f"qlora_{script_args.dataset_name.split('/')[-1]}")
-    with open(output_name, 'wb') as handle:
+    output_name = os.path.join(
+        trainer.args.output_dir,
+        f"lora_{script_args.model_name.split('/')[-1]}",
+        f"lora_{script_args.dataset_name.split('/')[-1]}"
+    )
+    Path(output_name).mkdir(parents=True, exist_ok=True)
+
+    with open(output_name + '/checkpoint.pt', 'w+b') as handle:
         pickle.dump(lora_adapter, handle)
-
-    # if script_args.merge_and_push:
-    #     output_dir = os.path.join(script_args.output_dir, "final_checkpoints")
-    #     trainer.model.save_pretrained(output_dir)
-
-    #     # Free memory for merging weights
-    #     del model
-    #     torch.cuda.empty_cache()
-
-    #     from peft import AutoPeftModelForCausalLM
-
-    #     model = AutoPeftModelForCausalLM.from_pretrained(output_dir, device_map="auto", torch_dtype=torch.bfloat16)
-    #     model = model.merge_and_unload()
-
-    #     output_merged_dir = os.path.join(script_args.output_dir, "final_merged_checkpoint")
-    #     model.save_pretrained(output_merged_dir, safe_serialization=True)

@@ -1,5 +1,4 @@
-from finetuners.lora_finetuner import run_lora_worker
-from finetuners.qlora_finetuner import finetuner_qlora
+from finetuner import finetuner
 from utils import AttributeDict
 import argparse
 import os
@@ -14,26 +13,28 @@ def load_config(filename):
 def finetuner_runner(args, datasets):
     config = load_config(args.config)
     output_dir = config.output_dir
-    existing_finetunes = os.listdir(output_dir)
-    print(existing_finetunes)
 
-    if args.finetune and args.mode == 'qlora':
-        finetuner_qlora(config)
-    elif args.finetune and args.mode == 'lora':
-        run_lora_worker(config)
+    if os.path.exists(output_dir):
+        existing_finetunes = os.listdir(output_dir)
+        print(existing_finetunes)
+    else:
+        os.mkdir(output_dir)
+
+    finetuner(config)
 
 
 def main():
     parser = argparse.ArgumentParser(description='MoE')
-    parser.add_argument('--finetune', action='store_true', help='Finetune? T/F')
-    parser.add_argument('--mode', type=str, required=True, help='Modes: qlora, lora')
-    parser.add_argument('--config', type=str, required=True, help='Path to YAML config file')
+    parser.add_argument('--finetune', action='store_true',
+                        help='Finetune? T/F')
+    parser.add_argument('--config', type=str, required=True,
+                        help='Path to YAML config file')
     args = parser.parse_args()
 
     # DATASETS
     datasets = ["timdettmers/openassistant-guanaco"]
 
-    if args.finetune and args.mode:
+    if args.finetune:
         finetuner_runner(args, datasets)
 
 
