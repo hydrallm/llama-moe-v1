@@ -34,8 +34,7 @@ def main():
     args = parser.parse_args()
 
     # DATASETS
-    #datasets = ["timdettmers/openassistant-guanaco"]
-    datasets = ['datasets/rick_and_morty_scripts.txt']
+    datasets = ["timdettmers/openassistant-guanaco"]
 
     if args.finetune and args.mode:
         finetuner_runner(args, datasets)
