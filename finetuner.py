@@ -61,11 +61,6 @@ def pop_peft(model):
                 pass
             elif 'lora' in k:
                 lora_state[k] = v
-            else:
-                print(
-                    k,
-                )
-                model_state[k.split('base_model.model.', 1)[1]] = v
         del model
 
     return lora_state
