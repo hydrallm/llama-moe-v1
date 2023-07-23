@@ -31,34 +31,18 @@ from transformers import (
     LlamaTokenizer,
 )
 from peft.tuners.lora import LoraLayer
+from utils import smart_tokenizer_and_embedding_resize
 
 from trl import SFTTrainer
 from accelerate import init_empty_weights
 
+DEFAULT_PAD_TOKEN = "[PAD]"
 
 FORMAT_DICT = {
     "alpaca": lambda x: f"Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.\n### Instruction:\n{x['instruction']}\n### Input:\n{x['input']}\n### Output:\n{x['output']}",
     "default": lambda x: x["text"],
     "camel": lambda x: f"### Instruction:\n{x['message_1']}\n### Output:\n{x['message_2']}",
 }
-
-
-def pop_peft(model):
-    """
-    remove peft from a model, return lora state dict
-    """
-    with init_empty_weights():
-        lora_state, model_state = {}, {}
-        for k, v in model.state_dict().items():
-            if "weight_format" in k or "SCB" in k:
-                pass
-            elif "lora" in k:
-                lora_state[k] = v
-            else:
-                model_state[k.split("base_model.model.", 1)[1]] = v
-        del model
-
-    return lora_state
 
 
 def finetuner(script_args):
@@ -105,6 +89,7 @@ def finetuner(script_args):
             lora_alpha=script_args.lora_alpha,
             lora_dropout=script_args.lora_dropout,
             r=script_args.lora_r,
+            target_modules=script_args.lora_target_modules,
             bias="none",
             task_type="CAUSAL_LM",
         )
@@ -114,16 +99,23 @@ def finetuner(script_args):
         )
         tokenizer.pad_token_id = model.config.pad_token_id
 
-        for name, module in model.named_modules():
-            if isinstance(module, LoraLayer):
-                if script_args.bf16:
-                    module = module.to(torch.bfloat16)
-            if "norm" in name:
-                module = module.to(torch.float32)
-            if "lm_head" in name or "embed_tokens" in name:
-                if hasattr(module, "weight"):
-                    if script_args.bf16 and module.weight.dtype == torch.float32:
-                        module = module.to(torch.bfloat16)
+        # for name, module in model.named_modules():
+        #     if isinstance(module, LoraLayer):
+        #         if script_args.bf16:
+        #             module = module.to(torch.bfloat16)
+        #     if "norm" in name:
+        #         module = module.to(torch.float32)
+        #     if "lm_head" in name or "embed_tokens" in name:
+        #         if hasattr(module, "weight"):
+        #             if script_args.bf16 and module.weight.dtype == torch.float32:
+        #                 module = module.to(torch.bfloat16)
+
+        if tokenizer._pad_token is None:
+            smart_tokenizer_and_embedding_resize(
+                special_tokens_dict=dict(pad_token=DEFAULT_PAD_TOKEN),
+                tokenizer=tokenizer,
+                model=model,
+            )
 
         if "llama" in script_args.model_name or isinstance(tokenizer, LlamaTokenizer):
             # LLaMA tokenizer may not have correct special tokens set.
