@@ -7,3 +7,5 @@ transformers == 4.31.0
 trl == 0.4.7
 scipy
 pyyaml
+wandb
+huggingface_hub
