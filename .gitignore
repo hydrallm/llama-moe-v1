@@ -11,3 +11,9 @@ env/
 .vscode/
 .idea/
 
+adapters/
+qlora/
+wandb/
+datasets/
+saved_runs/
+

@@ -11,17 +11,8 @@ Discord Server: https://discord.gg/CZAJcWTZxX
 
 ## Finetuner Setup
 
-### Modes
-The Finetuner can be run in two different modes: `qlora` and `lora`.
-
-#### qlora Mode
-To run the Finetuner in `qlora` mode, use the following command:
+To run the Finetuner use the following command:
 ```
-python3 main.py --finetune --mode qlora --config <path to config>
+python3 main.py --finetune --config <path to config> --push_to_hub <path to repo>
 ```
 
-#### lora Mode
-To run the Finetuner in `lora` mode, use the following command:
-```
-python3 main.py --finetune --mode lora --config <path to config>
-```
