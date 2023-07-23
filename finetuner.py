@@ -46,6 +46,15 @@ FORMAT_DICT = {
     ''' for ex in x]),
 
     'default': lambda x: '\n'.join([ex['text'] for ex in x]),
+
+    'camel': lambda x: ''.join([f'''
+    ### Instruction:
+    {ex['message_1']}
+
+    ### Output: 
+    {ex['message_2']}
+    ''' for ex in x]),
+
 }
 
 
@@ -114,7 +123,36 @@ def finetuner(script_args):
 
         tokenizer = AutoTokenizer.from_pretrained(
             script_args.model_name, trust_remote_code=True)
-        tokenizer.pad_token = tokenizer.eos_token
+        # tokenizer.pad_token = tokenizer.eos_token
+
+        for name, module in model.named_modules():
+            if isinstance(module, LoraLayer):
+                if args.bf16:
+                    module = module.to(torch.bfloat16)
+            if "norm" in name:
+                module = module.to(torch.float32)
+            if "lm_head" in name or "embed_tokens" in name:
+                if hasattr(module, "weight"):
+                    if args.bf16 and module.weight.dtype == torch.float32:
+                        module = module.to(torch.bfloat16)
+
+        if "llama" in args.model_name_or_path or isinstance(tokenizer, LlamaTokenizer):
+            # LLaMA tokenizer may not have correct special tokens set.
+            # Check and add them if missing to prevent them from being parsed into different tokens.
+            # Note that these are present in the vocabulary.
+            # Note also that `model.config.pad_token_id` is 0 which corresponds to `<unk>` token.
+            print("Adding special tokens.")
+            tokenizer.add_special_tokens(
+                {
+                    "eos_token": tokenizer.convert_ids_to_tokens(model.config.eos_token_id),
+                    "bos_token": tokenizer.convert_ids_to_tokens(model.config.bos_token_id),
+                    "unk_token": tokenizer.convert_ids_to_tokens(
+                        model.config.pad_token_id
+                        if model.config.pad_token_id != -1
+                        else tokenizer.pad_token_id
+                    ),
+                }
+            )
 
         return model, peft_config, tokenizer
 
@@ -153,9 +191,5 @@ def finetuner(script_args):
     )
 
     trainer.train()
-    lora_adapter = pop_peft(model)
 
-    output_name = os.path.join(
-        trainer.args.output_dir, f"qlora_{script_args.dataset_name.split('/')[-1]}")
-    with open(output_name, 'wb') as handle:
-        pickle.dump(lora_adapter, handle)
+    model.save_pretrained('adapters')
