@@ -9,11 +9,11 @@ lora_alpha: 16
 lora_dropout: 0.1
 lora_r: 64
 lora_target_modules: "all"
-max_seq_length: 2048
+max_seq_length: 512
 model_name: "meta-llama/Llama-2-7b-hf" # The model that you want to train from the Hugging Face hub. E.g. gpt2, gpt2-xl, bert, etc.
-dataset_name: "timdettmers/openassistant-guanaco" # The preference dataset to use.
-use_4bit: true # Activate 4bit precision base model loading
-use_8bit: false # Activate 8bit precision base model loading
+dataset_name: "Fredithefish/ShareGPT-unfiltered-alpaca-lora-format" # The preference dataset to use.
+use_4bit: false # Activate 4bit precision base model loading
+use_8bit: true # Activate 8bit precision base model loading
 use_nested_quant: false # Activate nested quantization for 4bit base models
 bnb_4bit_compute_dtype: "bfloat16" # Compute dtype for 4bit base models
 bnb_4bit_quant_type: "nf4" # Quantization type fp4 or nf4
@@ -30,5 +30,6 @@ save_steps: 10 # Save checkpoint every X updates steps.
 logging_steps: 10 # Log every X updates steps.
 merge_and_push: false # Merge and push weights after training
 output_dir: "./adapters" # The output directory where the model predictions and checkpoints will be written.
-data_format: "default"
+data_format: "alpaca" # "alpaca" for share-gpt, "camel" for camel and math50k datasets,
 report_to: "wandb"
+save_strategy: epoch

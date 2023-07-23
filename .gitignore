@@ -11,3 +11,7 @@ env/
 .vscode/
 .idea/
 
+adapters/
+qlora/
+wandb/
+
