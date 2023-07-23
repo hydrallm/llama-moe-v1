@@ -1,0 +1,35 @@
+local_rank: -1  # Used for multi-gpu
+per_device_train_batch_size: 120
+per_device_eval_batch_size: 120
+gradient_accumulation_steps: 4
+learning_rate: 0.0002
+max_grad_norm: 0.3
+weight_decay: 0.001
+lora_alpha: 16
+lora_dropout: 0.1
+lora_r: 64
+lora_target_modules: ['q_proj', 'v_proj']
+max_seq_length: 512
+model_name: "HuggingFaceH4/tiny-random-LlamaForCausalLM"  # The model that you want to train from the Hugging Face hub. E.g. gpt2, gpt2-xl, bert, etc.
+dataset_name: "roneneldan/TinyStories"  # The preference dataset to use.
+instruct_format: false  # set to true if the dataset is in instruct format.
+use_4bit: true  # Activate 4bit precision base model loading
+use_8bit: false  # Activate 8bit precision base model loading
+use_nested_quant: false  # Activate nested quantization for 4bit base models
+bnb_4bit_compute_dtype: "bfloat16"  # Compute dtype for 4bit base models
+bnb_4bit_quant_type: "nf4"  # Quantization type fp4 or nf4
+num_train_epochs: 0.001  # The number of training epochs for the reward model.
+fp16: false  # Enables fp16 training.
+bf16: true  # Enables bf16 training.
+packing: false  # Use packing dataset creating.
+gradient_checkpointing: true  # Enables gradient checkpointing.
+optim: "paged_adamw_32bit"  # The optimizer to use.
+lr_scheduler_type: "constant"  # Learning rate schedule. Constant a bit better than cosine, and has advantage for analysis
+max_steps: 10000  # How many optimizer update steps to take
+warmup_ratio: 0.03  # Fraction of steps to do a warmup for
+group_by_length: true  # Group sequences into batches with same length. Saves memory and speeds up training considerably.
+save_steps: 10  # Save checkpoint every X updates steps.
+logging_steps: 10  # Log every X updates steps.
+merge_and_push: false  # Merge and push weights after training
+output_dir: "./adapters"  # The output directory where the model predictions and checkpoints will be written.
+data_format: "default"

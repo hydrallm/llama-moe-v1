@@ -8,20 +8,19 @@ Discord Server: https://discord.gg/CZAJcWTZxX
 **Setup**
   pip install -r requirements.txt
 
+## Access to the Llama 2 weights
+
+You will need to sign in with your HF account and sign the terms. You can find the terms in one of the model pages for Llama 2, e.g. here: https://huggingface.co/meta-llama/Llama-2-70b-hf
+
+Then, you will want to [log in to HF with a token](https://huggingface.co/docs/huggingface_hub/quick-start#login):
+```
+huggingface-cli login --token $HUGGINGFACE_TOKEN
+```
 
 ## Finetuner Setup
 
-### Modes
-The Finetuner can be run in two different modes: `qlora` and `lora`.
-
-#### qlora Mode
-To run the Finetuner in `qlora` mode, use the following command:
+To run the Finetuner use the following command:
 ```
-python3 main.py --finetune --mode qlora --config <path to config>
+python3 main.py --finetune --config <path to config> --push_to_hub <path to repo>
 ```
 
-#### lora Mode
-To run the Finetuner in `lora` mode, use the following command:
-```
-python3 main.py --finetune --mode lora --config <path to config>
-```
