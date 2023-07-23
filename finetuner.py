@@ -21,6 +21,7 @@ from typing import Optional
 import torch
 from datasets import load_dataset
 from peft import LoraConfig
+from peft.tuners.lora import LoraLayer
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
@@ -28,6 +29,7 @@ from transformers import (
     HfArgumentParser,
     AutoTokenizer,
     TrainingArguments,
+    LlamaTokenizer
 )
 
 from trl import SFTTrainer
@@ -134,7 +136,7 @@ def finetuner(script_args):
                     if args.bf16 and module.weight.dtype == torch.float32:
                         module = module.to(torch.bfloat16)
 
-        if "llama" in args.model_name_or_path or isinstance(tokenizer, LlamaTokenizer):
+        if "llama" in args.model_name or isinstance(tokenizer, LlamaTokenizer):
             # LLaMA tokenizer may not have correct special tokens set.
             # Check and add them if missing to prevent them from being parsed into different tokens.
             # Note that these are present in the vocabulary.
