@@ -99,16 +99,16 @@ def finetuner(script_args):
         )
         tokenizer.pad_token_id = model.config.pad_token_id
 
-        # for name, module in model.named_modules():
-        #     if isinstance(module, LoraLayer):
-        #         if script_args.bf16:
-        #             module = module.to(torch.bfloat16)
-        #     if "norm" in name:
-        #         module = module.to(torch.float32)
-        #     if "lm_head" in name or "embed_tokens" in name:
-        #         if hasattr(module, "weight"):
-        #             if script_args.bf16 and module.weight.dtype == torch.float32:
-        #                 module = module.to(torch.bfloat16)
+        for name, module in model.named_modules():
+            if isinstance(module, LoraLayer):
+                if script_args.bf16:
+                    module = module.to(torch.bfloat16)
+            if "norm" in name:
+                module = module.to(torch.float32)
+            if "lm_head" in name or "embed_tokens" in name:
+                if hasattr(module, "weight"):
+                    if script_args.bf16 and module.weight.dtype == torch.float32:
+                        module = module.to(torch.bfloat16)
 
         if tokenizer._pad_token is None:
             smart_tokenizer_and_embedding_resize(
