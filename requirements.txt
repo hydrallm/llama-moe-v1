@@ -1,5 +1,5 @@
 torch
-datasets
+datasets==2.12.0
 accelerate == 0.21.0
 peft == 0.4.0
 bitsandbytes == 0.40.2

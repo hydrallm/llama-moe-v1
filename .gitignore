@@ -12,4 +12,8 @@ env/
 .idea/
 
 adapters/
+qlora/
 wandb/
+datasets/
+
+
