@@ -11,7 +11,7 @@ lora_r: 64
 lora_target_modules: "all"
 max_seq_length: 1024
 model_name: "meta-llama/Llama-2-7b-hf" # The model that you want to train from the Hugging Face hub. E.g. gpt2, gpt2-xl, bert, etc.
-dataset_name: "Fredithefish/ShareGPT-unfiltered-alpaca-lora-format" # The preference dataset to use.
+dataset_name: "camel-ai/science" # The preference dataset to use.
 use_4bit: true # Activate 4bit precision base model loading
 use_8bit: false # Activate 8bit precision base model loading
 use_nested_quant: false # Activate nested quantization for 4bit base models
@@ -29,7 +29,7 @@ group_by_length: true # Group sequences into batches with same length. Saves mem
 save_steps: 500 # Save checkpoint every X updates steps.
 logging_steps: 10 # Log every X updates steps.
 merge_and_push: false # Merge and push weights after training
-output_dir: "./saved_runs/sharegpt_llama2-7b" # The output directory where the model predictions and checkpoints will be written.
-data_format: "alpaca" # "alpaca" for share-gpt, "camel" for camel and math50k datasets,
+output_dir: "./saved_runs/camel_science_llama2-7b" # The output directory where the model predictions and checkpoints will be written.
+data_format: "camel" # "alpaca" for share-gpt, "camel" for camel and math50k datasets,
 report_to: "wandb"
 save_strategy: steps

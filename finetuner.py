@@ -19,7 +19,7 @@ import pickle
 from typing import Optional
 
 import torch
-from datasets import load_dataset
+from datasets import load_dataset, concatenate_datasets
 from peft import LoraConfig
 from transformers import (
     AutoModelForCausalLM,
@@ -36,17 +36,11 @@ from trl import SFTTrainer
 from accelerate import init_empty_weights
 
 
-DEFAULT_PAD_TOKEN = "[PAD]"
-
 FORMAT_DICT = {
     "alpaca": lambda x: f"Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.\n### Instruction:\n{x['instruction']}\n### Input:\n{x['input']}\n### Output:\n{x['output']}",
     "default": lambda x: x["text"],
     "camel": lambda x: f"### Instruction:\n{x['message_1']}\n### Output:\n{x['message_2']}",
 }
-
-
-def formatting_prompts_func(example, data_format):
-    return FORMAT_DICT[data_format](example)
 
 
 def pop_peft(model):
@@ -174,12 +168,22 @@ def finetuner(script_args):
         save_strategy=script_args.save_strategy,
     )
 
+    if "science" in script_args.dataset_name:
+        dataset_physics = load_dataset("camel-ai/physics", split="train")
+        dataset_chemistry = load_dataset("camel-ai/chemistry", split="train")
+        dataset_biology = load_dataset("camel-ai/biology", split="train")
+        dataset = concatenate_datasets(
+            [dataset_physics, dataset_chemistry, dataset_biology]
+        )
+    else:
+        dataset = load_dataset(script_args.dataset_name, split="train")
+
+    print(f"Dataset Length: {len(dataset)}")
     model, peft_config, tokenizer = create_and_prepare_model(script_args)
     model.config.use_cache = False
-    dataset = load_dataset(script_args.dataset_name, split="train")
+
     formatting_func = lambda x: {"text": FORMAT_DICT[script_args.data_format](x)}
     dataset = dataset.map(formatting_func)
-    # formatting_func = lambda x: formatting_prompts_func(x, script_args.data_format)
 
     trainer = SFTTrainer(
         model=model,

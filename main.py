@@ -20,7 +20,7 @@ def finetuner_runner(args):
         print(existing_finetunes)
     else:
         existing_finetunes = []
-        os.mkdir(output_dir)
+        os.makedirs(output_dir)
 
     if f"qlora_{config.dataset_name.split('/')[-1]}" not in existing_finetunes:
         finetuner(config)
