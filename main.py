@@ -1,8 +1,10 @@
 from finetuner import finetuner
 from utils import AttributeDict
+import huggingface_hub
 import argparse
 import os
 import yaml
+import wandb
 
 
 def load_config(filename):
@@ -13,6 +15,12 @@ def load_config(filename):
 def finetuner_runner(args, datasets):
     config = load_config(args.config)
     output_dir = config.output_dir
+
+    if config.wandb_token:
+        wandb_setup(config)
+    
+    if config.hf_token:
+        hf_login(config)
 
     if os.path.exists(output_dir):
         existing_finetunes = os.listdir(output_dir)
@@ -26,6 +34,14 @@ def finetuner_runner(args, datasets):
             config.max_steps = 10000
             finetuner(config)
 
+def wandb_setup(config):
+    os.environ["WANDB_API_KEY"] = config.wandb_token
+    os.environ["WANDB_WATCH"] = "gradients"
+    os.environ["WANDB_LOG_MODEL"] = "true"
+    wandb.login()
+
+def hf_login(config):
+    huggingface_hub.login(token=config.hf_token)
 
 def main():
     parser = argparse.ArgumentParser(description='MoE')
