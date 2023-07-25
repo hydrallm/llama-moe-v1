@@ -1,35 +1,43 @@
-local_rank: -1 # Used for multi-gpu
-per_device_train_batch_size: 1
+model_name_or_path: "meta-llama/Llama-2-7b-hf"
+use_auth: true
+output_dir: "./output"
+logging_steps: 10
+save_strategy: "steps"
+data_seed: 42
+save_steps: 500
+save_total_limit: 40
+evaluation_strategy: "steps"
+eval_dataset_size: 1024
+max_eval_samples: 1000
 per_device_eval_batch_size: 1
-gradient_accumulation_steps: 16
-learning_rate: 0.0002
-max_grad_norm: 0.3
-weight_decay: 0.001
-lora_alpha: 16
-lora_dropout: 0.1
+max_new_tokens: 32
+dataloader_num_workers: 1
+group_by_length: true
+logging_strategy: "steps"
+remove_unused_columns: false
+do_train: true
+do_eval: true
+do_mmlu_eval: true
 lora_r: 64
-lora_target_modules: "all"
-max_seq_length: 512
-model_name: "meta-llama/Llama-2-7b-hf" # The model that you want to train from the Hugging Face hub. E.g. gpt2, gpt2-xl, bert, etc.
-dataset_name: "timdettmers/openassistant-guanaco" # The preference dataset to use.
-instruct_format: false # set to true if the dataset is in instruct format.
-use_4bit: true # Activate 4bit precision base model loading
-use_8bit: false # Activate 8bit precision base model loading
-use_nested_quant: false # Activate nested quantization for 4bit base models
-bnb_4bit_compute_dtype: "bfloat16" # Compute dtype for 4bit base models
-bnb_4bit_quant_type: "nf4" # Quantization type fp4 or nf4
-num_train_epochs: 1 # The number of training epochs for the reward model.
-fp16: false # Enables fp16 training.
-bf16: true # Enables bf16 training.
-packing: false # Use packing dataset creating.
-gradient_checkpointing: true # Enables gradient checkpointing.
-optim: "paged_adamw_32bit" # The optimizer to use.
-lr_scheduler_type: "constant" # Learning rate schedule. Constant a bit better than cosine, and has advantage for analysis
-max_steps: 10000 # How many optimizer update steps to take
-warmup_ratio: 0.03 # Fraction of steps to do a warmup for
-group_by_length: true # Group sequences into batches with same length. Saves memory and speeds up training considerably.
-save_steps: 10 # Save checkpoint every X updates steps.
-logging_steps: 10 # Log every X updates steps.
-merge_and_push: false # Merge and push weights after training
-output_dir: "./adapters" # The output directory where the model predictions and checkpoints will be written.
-data_format: "default"
+lora_alpha: 16
+lora_modules: "all"
+double_quant: true
+quant_type: "nf4"
+bf16: true
+bits: 4
+warmup_ratio: 0.03
+lr_scheduler_type: "constant"
+gradient_checkpointing: true
+dataset: "oasst1"
+source_max_len: 16
+target_max_len: 512
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 16
+max_steps: 1875
+eval_steps: 187
+learning_rate: 0.0002
+adam_beta2: 0.999
+max_grad_norm: 0.3
+lora_dropout: 0.1
+weight_decay: 0.0
+seed: 0
