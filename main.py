@@ -1,4 +1,3 @@
-from finetuner import finetuner
 from utils import AttributeDict
 import argparse
 import os
@@ -14,7 +13,7 @@ class Config:
 def load_config(config_file):
         with open(config_file, 'r') as stream:
             try:
-                config_dict = yaml.safe_load(stream, Loader=yaml.FullLoader)
+                config_dict = yaml.safe_load(stream)
                 config = Config(config_dict)
                 return config
             except yaml.YAMLError as exc:
@@ -67,7 +66,7 @@ def main():
     dataset = "timdettmers/openassistant-guanaco"
     adapter = "HydraLM/camel_science_llama2-7b"
     if not args.config:
-        config_file = "default_config.yaml"
+        config_file = "configs/default_config.yaml"
     else:
         config_file = args.config
 
