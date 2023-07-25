@@ -27,7 +27,7 @@ def inference_runner(config_file, dataset, model, adapter):
         dataset_name = dataset.split('/')[1]
     else:
         dataset_name = dataset    
-    config.dataset_name = dataset
+    config.dataset = dataset
     config.model_name_or_path = model
     config.output_dir = model_name + "_" + dataset_name
     config.checkpoint_dir = adapter
