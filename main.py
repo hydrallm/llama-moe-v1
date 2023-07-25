@@ -23,7 +23,10 @@ def inference_runner(config_file, dataset, model, adapter):
 
     config = load_config(config_file)
     model_name = model.split('/')[1]
-    dataset_name = dataset.split('/')[1]
+    if '/' in dataset:
+        dataset_name = dataset.split('/')[1]
+    else:
+        dataset_name = dataset    
     config.dataset_name = dataset
     config.model_name_or_path = model
     config.output_dir = model_name + "_" + dataset_name
@@ -38,7 +41,10 @@ def inference_runner(config_file, dataset, model, adapter):
 def finetuner_runner(config_file, dataset, model):
     config = load_config(config_file)
     model_name = model.split('/')[1]
-    dataset_name = dataset.split('/')[1]
+    if '/' in dataset:
+        dataset_name = dataset.split('/')[1]
+    else:
+        dataset_name = dataset
     config.dataset_name = dataset
     config.model_name_or_path = model
     config.output_dir = model_name + "_" + dataset_name
@@ -63,7 +69,8 @@ def main():
     args = parser.parse_args()
 
     model = "meta-llama/Llama-2-7b-hf"
-    dataset = "timdettmers/openassistant-guanaco"
+    # dataset = "timdettmers/openassistant-guanaco"
+    dataset = "alpaca"
     adapter = "HydraLM/camel_science_llama2-7b"
     if not args.config:
         config_file = "configs/default_config.yaml"
