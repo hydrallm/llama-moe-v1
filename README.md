@@ -5,23 +5,15 @@ We are creating an MoE model by stitching together a bunch of QLora domain-speci
 Working document: https://docs.google.com/document/d/1YKDRCu7M9mflWrxKc1HeFs2HBWk4HXVrrOsLrIn6EXM/edit?usp=sharing
 Discord Server: https://discord.gg/CZAJcWTZxX
 
-**Setup**
+## **Setup**
   pip install -r requirements.txt
 
 
-## Finetuner Setup
+## Run Finetuner
 
-### Modes
-The Finetuner can be run in two different modes: `qlora` and `lora`.
-
-#### qlora Mode
-To run the Finetuner in `qlora` mode, use the following command:
+#### QLoRA
+To run the Finetuner in `qlora` mode, use the following command:(config is optional if you want to use defaults)
 ```
-python3 main.py --finetune --mode qlora --config <path to config>
+python3 main.py --finetune --config <path to config>
 ```
 
-#### lora Mode
-To run the Finetuner in `lora` mode, use the following command:
-```
-python3 main.py --finetune --mode lora --config <path to config>
-```

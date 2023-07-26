@@ -1,195 +1,192 @@
-# coding=utf-8
-# Copyright 2023 The HuggingFace Inc. team. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+from args import *
+from utils import *
+from collections import defaultdict
+import copy
+import json
 import os
+from os.path import exists, join, isdir
 from dataclasses import dataclass, field
-import pickle
-from typing import Optional
+import sys
+from typing import Optional, Dict, Sequence
+import numpy as np
+from tqdm import tqdm
+import logging
+import bitsandbytes as bnb
+import pandas as pd
 
 import torch
-from datasets import load_dataset
-from peft import LoraConfig
+import transformers
+from torch.nn.utils.rnn import pad_sequence
+import argparse
 from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    BitsAndBytesConfig,
-    HfArgumentParser,
-    AutoTokenizer,
-    TrainingArguments,
+    set_seed,
+    Seq2SeqTrainer,
 )
-
-from trl import SFTTrainer
-from accelerate import init_empty_weights
-
-FORMAT_DICT = {
-    'alpaca': lambda x: ''.join([f'''Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
-    ### Instruction:
-    {ex['instruction']}
-
-    ### Input:
-    {ex['input']}
-
-    ### Output: 
-    {ex['output']}
-    ''' for ex in x]),
-
-    'default': lambda x: '\n'.join([ex['text'] for ex in x]),
-
-    'camel': lambda x: ''.join([f'''
-    ### Instruction:
-    {ex['message_1']}
-
-    ### Output: 
-    {ex['message_2']}
-    ''' for ex in x]),
-
-}
+from datasets import load_dataset, Dataset
+import evaluate
 
 
-def pop_peft(model):
-    """
-        remove peft from a model, return lora state dict
-    """
-    with init_empty_weights():
-        lora_state, model_state = {}, {}
-        for k, v in model.state_dict().items():
-            if 'weight_format' in k or 'SCB' in k:
-                pass
-            elif 'lora' in k:
-                lora_state[k] = v
-            else:
-                model_state[k.split('base_model.model.', 1)[1]] = v
-        del model
-
-    return lora_state
 
 
-def finetuner(script_args):
-    """
-    Finetune a QLoRA adapter and save it as a .pickle file
-    """
-    def create_and_prepare_model(args):
-        compute_dtype = getattr(torch, args.bnb_4bit_compute_dtype)
+torch.backends.cuda.matmul.allow_tf32 = True
 
-        bnb_config = BitsAndBytesConfig(
-            load_in_4bit=args.use_4bit,
-            bnb_4bit_quant_type=args.bnb_4bit_quant_type,
-            bnb_4bit_compute_dtype=compute_dtype,
-            bnb_4bit_use_double_quant=args.use_nested_quant,
-        )
+logger = logging.getLogger(__name__)
 
-        if compute_dtype == torch.float16 and args.use_4bit:
-            major, _ = torch.cuda.get_device_capability()
-            if major >= 8:
-                print("=" * 80)
-                print(
-                    "Your GPU supports bfloat16, you can accelerate training with the argument --bf16")
-                print("=" * 80)
+IGNORE_INDEX = -100
 
-        # Load the entire model on the GPU 0
-        # switch to `device_map = "auto"` for multi-GPU
-        device_map = {"": 0}
-
-        model = AutoModelForCausalLM.from_pretrained(
-            args.model_name,
-            quantization_config=bnb_config,
-            torch_dtype=torch.bfloat16,
-            device_map=device_map,
-            use_auth_token=True,
-        )
-
-        # check: https://github.com/huggingface/transformers/pull/24906
-        model.config.pretraining_tp = 1
-
-        peft_config = LoraConfig(
-            lora_alpha=script_args.lora_alpha,
-            lora_dropout=script_args.lora_dropout,
-            r=script_args.lora_r,
-            bias="none",
-            task_type="CAUSAL_LM",
-        )
-
-        tokenizer = AutoTokenizer.from_pretrained(
-            script_args.model_name, trust_remote_code=True)
-        # tokenizer.pad_token = tokenizer.eos_token
-
-        for name, module in model.named_modules():
-            if isinstance(module, LoraLayer):
-                if args.bf16:
-                    module = module.to(torch.bfloat16)
-            if "norm" in name:
-                module = module.to(torch.float32)
-            if "lm_head" in name or "embed_tokens" in name:
-                if hasattr(module, "weight"):
-                    if args.bf16 and module.weight.dtype == torch.float32:
-                        module = module.to(torch.bfloat16)
-
-        if "llama" in args.model_name_or_path or isinstance(tokenizer, LlamaTokenizer):
-            # LLaMA tokenizer may not have correct special tokens set.
-            # Check and add them if missing to prevent them from being parsed into different tokens.
-            # Note that these are present in the vocabulary.
-            # Note also that `model.config.pad_token_id` is 0 which corresponds to `<unk>` token.
-            print("Adding special tokens.")
-            tokenizer.add_special_tokens(
-                {
-                    "eos_token": tokenizer.convert_ids_to_tokens(model.config.eos_token_id),
-                    "bos_token": tokenizer.convert_ids_to_tokens(model.config.bos_token_id),
-                    "unk_token": tokenizer.convert_ids_to_tokens(
-                        model.config.pad_token_id
-                        if model.config.pad_token_id != -1
-                        else tokenizer.pad_token_id
-                    ),
-                }
-            )
-
-        return model, peft_config, tokenizer
-
-    training_arguments = TrainingArguments(
-        output_dir=script_args.output_dir,
-        per_device_train_batch_size=script_args.per_device_train_batch_size,
-        gradient_accumulation_steps=script_args.gradient_accumulation_steps,
-        optim=script_args.optim,
-        save_steps=script_args.save_steps,
-        logging_steps=script_args.logging_steps,
-        learning_rate=script_args.learning_rate,
-        fp16=script_args.fp16,
-        bf16=script_args.bf16,
-        max_grad_norm=script_args.max_grad_norm,
-        max_steps=script_args.max_steps,
-        warmup_ratio=script_args.warmup_ratio,
-        group_by_length=script_args.group_by_length,
-        lr_scheduler_type=script_args.lr_scheduler_type,
+def train():
+    hfparser = transformers.HfArgumentParser((
+        ModelArguments, DataArguments, TrainingArguments, GenerationArguments
+    ))
+    model_args, data_args, training_args, generation_args, extra_args = \
+        hfparser.parse_args_into_dataclasses(return_remaining_strings=True)
+    training_args.generation_config = transformers.GenerationConfig(**vars(generation_args))
+    args = argparse.Namespace(
+        **vars(model_args), **vars(data_args), **vars(training_args)
     )
+    print(args)
 
-    model, peft_config, tokenizer = create_and_prepare_model(script_args)
+    checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
+    if completed_training:
+        print('Detected that training was already completed!')
+
+    model, tokenizer = get_accelerate_model(args, checkpoint_dir)
+
     model.config.use_cache = False
-    dataset = load_dataset(script_args.dataset_name, split="train")
-    formatting_func = FORMAT_DICT[script_args.data_format]
+    print('loaded model')
+    set_seed(args.seed)
 
-    trainer = SFTTrainer(
+    data_module = make_data_module(tokenizer=tokenizer, args=args)
+    
+    trainer = Seq2SeqTrainer(
         model=model,
-        train_dataset=dataset,
-        peft_config=peft_config,
-        dataset_text_field="text",
-        max_seq_length=script_args.max_seq_length,
         tokenizer=tokenizer,
-        args=training_arguments,
-        packing=script_args.packing,
-        formatting_func=formatting_func,
+        args=training_args,
+        **{k:v for k,v in data_module.items() if k != 'predict_dataset'},
     )
 
-    trainer.train()
+    # Callbacks
+    if not args.full_finetune:
+        trainer.add_callback(SavePeftModelCallback)
+    if args.do_mmlu_eval:
+        if args.mmlu_dataset == 'mmlu-zs':
+            mmlu_dataset = load_dataset("json", data_files={
+                'eval': 'data/mmlu/zero_shot_mmlu_val.json',
+                'test': 'data/mmlu/zero_shot_mmlu_test.json',
+            })
+            mmlu_dataset = mmlu_dataset.remove_columns('subject')
+        # MMLU Five-shot (Eval/Test only)
+        elif args.mmlu_dataset == 'mmlu' or args.mmlu_dataset == 'mmlu-fs':
+            mmlu_dataset = load_dataset("json", data_files={
+                'eval': 'data/mmlu/five_shot_mmlu_val.json',
+                'test': 'data/mmlu/five_shot_mmlu_test.json',
+            })
+            # mmlu_dataset = mmlu_dataset.remove_columns('subject')
+        mmlu_dataset = mmlu_dataset[args.mmlu_split]
+        if args.max_mmlu_samples is not None:
+            mmlu_dataset = mmlu_dataset.select(range(args.max_mmlu_samples))
+        abcd_idx = [
+            tokenizer("A", add_special_tokens=False).input_ids[0],
+            tokenizer("B", add_special_tokens=False).input_ids[0],
+            tokenizer("C", add_special_tokens=False).input_ids[0],
+            tokenizer("D", add_special_tokens=False).input_ids[0],
+        ]
+        accuracy = evaluate.load("accuracy")
+        class MMLUEvalCallback(transformers.TrainerCallback):
+            def on_evaluate(self, args, state, control, model, **kwargs):
+                data_loader = trainer.get_eval_dataloader(mmlu_dataset)
+                source_max_len = trainer.data_collator.source_max_len
+                trainer.data_collator.source_max_len = args.mmlu_source_max_len
+                trainer.model.eval()
+                preds, refs = [], []
+                loss_mmlu = 0
+                for batch in tqdm(data_loader, total=len(data_loader)):
+                    (loss, logits, labels) = trainer.prediction_step(trainer.model,batch,prediction_loss_only=False,)
+                    # There are two tokens, the output, and eos token.
+                    for i, logit in enumerate(logits):
+                        label_non_zero_id = (batch['labels'][i] != -100).nonzero()[0][0]
+                        logit_abcd = logit[label_non_zero_id-1][abcd_idx]
+                        preds.append(torch.argmax(logit_abcd).item())
+                    labels = labels[labels != IGNORE_INDEX].view(-1, 2)[:,0]
+                    refs += [abcd_idx.index(label) for label in labels.tolist()]
+                    loss_mmlu += loss.item()
+                # Extract results by subject.
+                results = {'mmlu_loss':loss_mmlu/len(data_loader)}
+                subject = mmlu_dataset['subject']
+                subjects = {s:{'refs':[], 'preds':[]} for s in set(subject)}
+                for s,p,r in zip(subject, preds, refs):
+                    subjects[s]['preds'].append(p)
+                    subjects[s]['refs'].append(r)
+                subject_scores = []
+                for subject in subjects:
+                    subject_score = accuracy.compute(
+                        references=subjects[subject]['refs'],
+                        predictions=subjects[subject]['preds']
+                    )['accuracy']
+                    results[f'mmlu_{args.mmlu_split}_accuracy_{subject}'] = subject_score
+                    subject_scores.append(subject_score)
+                results[f'mmlu_{args.mmlu_split}_accuracy'] = np.mean(subject_scores)
+                trainer.log(results)
+                trainer.data_collator.source_max_len = source_max_len
 
-    model.save_pretrained('adapters')
+        trainer.add_callback(MMLUEvalCallback)
+
+    # Verifying the datatypes and parameter counts before training.
+    print_trainable_parameters(args, model)
+    dtypes = {}
+    for _, p in model.named_parameters():
+        dtype = p.dtype
+        if dtype not in dtypes: dtypes[dtype] = 0
+        dtypes[dtype] += p.numel()
+    total = 0
+    for k, v in dtypes.items(): total+= v
+    for k, v in dtypes.items():
+        print(k, v, v/total)
+
+    all_metrics = {"run_name": args.run_name}
+    # Training
+    if args.do_train:
+        logger.info("*** Train ***")
+        # Note: `resume_from_checkpoint` not supported for adapter checkpoints by HF.
+        # Currently adapter checkpoint is reloaded as expected but optimizer/scheduler states are not.
+        train_result = trainer.train()
+        metrics = train_result.metrics
+        trainer.log_metrics("train", metrics)
+        trainer.save_metrics("train", metrics)
+        trainer.save_state()
+        all_metrics.update(metrics)
+    # Evaluation
+    if args.do_eval:
+        logger.info("*** Evaluate ***")
+        metrics = trainer.evaluate(metric_key_prefix="eval")
+        trainer.log_metrics("eval", metrics)
+        trainer.save_metrics("eval", metrics)
+        all_metrics.update(metrics)
+    # Prediction
+    if args.do_predict:
+        logger.info("*** Predict ***")
+        prediction_output = trainer.predict(test_dataset=data_module['predict_dataset'],metric_key_prefix="predict")
+        prediction_metrics = prediction_output.metrics
+        predictions = prediction_output.predictions
+        predictions = np.where(predictions != -100, predictions, tokenizer.pad_token_id)
+        predictions = tokenizer.batch_decode(
+            predictions, skip_special_tokens=True, clean_up_tokenization_spaces=True
+        )
+        with open(os.path.join(args.output_dir, 'predictions.jsonl'), 'w') as fout:
+            for i, example in enumerate(data_module['predict_dataset']):
+                example['prediction_with_input'] = predictions[i].strip()
+                example['prediction'] = predictions[i].replace(example['input'], '').strip()
+                fout.write(json.dumps(example) + '\n')
+        print(prediction_metrics)
+        trainer.log_metrics("predict", prediction_metrics)
+        trainer.save_metrics("predict", prediction_metrics)
+        all_metrics.update(prediction_metrics)
+
+    if (args.do_train or args.do_eval or args.do_predict):
+        with open(os.path.join(args.output_dir, "metrics.json"), "w") as fout:
+            fout.write(json.dumps(all_metrics))
+
+if __name__ == "__main__":
+    train()
